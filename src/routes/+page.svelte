@@ -1,2 +1,44 @@
-<h1>Welcome to SvelteKit</h1>
-<a href="/test">test</a>
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+
+	let url: string;
+
+	onMount(() => {
+		url = localStorage.getItem('api') ?? '';
+	});
+</script>
+
+<div class="flex flex-1 items-center justify-center">
+	<div class="card shadow-xl bg-primary-content w-96 max-w-full">
+		<div class="card-body">
+			<h1 class="card-title">Set API endpoint</h1>
+			<form
+				on:submit|preventDefault={() => {
+					try {
+						const urlObj = new URL(url);
+						localStorage.setItem('api', urlObj.origin);
+						goto('/login');
+					} catch (e) {
+						console.error(e);
+					}
+				}}
+			>
+				<label class="form-control w-full">
+					<div class="label">
+						<span class="label-text">Endpoint</span>
+					</div>
+					<input
+						bind:value={url}
+						type="url"
+						placeholder="http://localhost:5000"
+						class="input input-bordered w-full"
+					/>
+				</label>
+				<div class="card-actions mt-4">
+					<button class="btn btn-primary w-full">Save</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
