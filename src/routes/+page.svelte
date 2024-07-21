@@ -16,8 +16,7 @@
 			<form
 				on:submit|preventDefault={() => {
 					try {
-						const urlObj = new URL(url);
-						localStorage.setItem('api', urlObj.origin);
+						localStorage.setItem('api', url);
 						goto('/login');
 					} catch (e) {
 						console.error(e);
