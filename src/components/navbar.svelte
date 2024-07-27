@@ -10,6 +10,17 @@
 		initTheme = localStorage.getItem('theme') ?? undefined;
 	});
 	const user = createAuthQuery();
+
+	const links = [
+		{
+			name: 'Users',
+			href: '/dashboard'
+		},
+		{
+			name: 'Films',
+			href: '/dashboard/films'
+		}
+	];
 </script>
 
 <nav class="navbar bg-base-300">
@@ -35,25 +46,12 @@
 				<ul
 					class="menu menu-sm dropdown-content bg-base-200 rounded-box z-[1] mt-3 w-52 p-2 shadow"
 				>
+					{#each links as link}
+						<li>
+							<a href={link.href}>{link.name}</a>
+						</li>
+					{/each}
 					<li>
-						{#if $user.data}
-							<button
-								on:click={() => {
-									localStorage.removeItem('token');
-									location.reload();
-								}}
-								>Logout
-							</button>
-						{/if}
-					</li>
-				</ul>
-			</div>
-			<a class="btn btn-ghost text-xl" href="/">Nelfix</a>
-		</div>
-		<div class="navbar-end inline-flex">
-			<ul class="menu menu-horizontal px-1 mr-4">
-				<li>
-					{#if $user.data}
 						<button
 							on:click={() => {
 								localStorage.removeItem('token');
@@ -61,8 +59,29 @@
 							}}
 							>Logout
 						</button>
-					{/if}
-				</li>
+					</li>
+				</ul>
+			</div>
+			<a class="btn btn-ghost text-xl" href="/">Nelfix</a>
+		</div>
+		<div class="navbar-end inline-flex">
+			<ul class="menu menu-horizontal px-1 mr-4">
+				{#if $user.data}
+					{#each links as link}
+						<li>
+							<a href={link.href}>{link.name}</a>
+						</li>
+					{/each}
+					<li>
+						<button
+							on:click={() => {
+								localStorage.removeItem('token');
+								location.reload();
+							}}
+							>Logout
+						</button>
+					</li>
+				{/if}
 			</ul>
 			<label class="swap swap-rotate">
 				<!-- this hidden checkbox controls the state -->

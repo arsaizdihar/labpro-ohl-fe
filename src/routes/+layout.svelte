@@ -7,13 +7,6 @@
 	import { goto } from '$app/navigation';
 	import Navbar from '../components/navbar.svelte';
 
-	let initTheme: string | undefined;
-
-	onMount(() => {
-		themeChange(false);
-		initTheme = localStorage.getItem('theme') ?? undefined;
-	});
-
 	if (browser && !localStorage.getItem('api') && location.pathname !== '/') {
 		goto('/');
 	}

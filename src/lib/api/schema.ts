@@ -6,9 +6,10 @@ export const SimpleUserSchema = z.object({
 });
 
 export const UserSchema = z.object({
-	id: z.union([z.string(), z.number()]),
+	id: z.string(),
 	username: z.string(),
-	name: z.string(),
 	email: z.string().email(),
 	balance: z.number()
 });
+
+export type User = z.infer<typeof UserSchema>;
