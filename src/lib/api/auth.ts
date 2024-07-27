@@ -1,7 +1,13 @@
+import { AxiosError } from 'axios';
+import { z } from 'zod';
 import { client, makeSchema } from './client';
-import { SimpleUserSchema } from './schema';
 
-const LoginResponseSchema = makeSchema(SimpleUserSchema);
+const LoginResponseSchema = makeSchema(
+	z.object({
+		username: z.string(),
+		token: z.string()
+	})
+);
 
 export async function login(body: { username: string; password: string }) {
 	const data = await client()
@@ -9,4 +15,18 @@ export async function login(body: { username: string; password: string }) {
 		.then((res) => res.data);
 
 	return LoginResponseSchema.parse(data);
+}
+
+export async function getSelf() {
+	try {
+		const data = await client()
+			.get('/self')
+			.then((res) => res.data);
+
+		return LoginResponseSchema.parse(data);
+	} catch (e) {
+		if (e instanceof AxiosError) {
+			return null;
+		}
+	}
 }

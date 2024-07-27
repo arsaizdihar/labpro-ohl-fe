@@ -27,7 +27,11 @@ export function initializeClient(endpoint: string) {
 
 export function client() {
 	if (!_client) {
-		throw new Error('Call initializeClient before calling client');
+		const endpoint = localStorage.getItem('api');
+		if (!endpoint) {
+			throw new Error('Call initializeClient before calling client');
+		}
+		initializeClient(endpoint);
 	}
 	return _client;
 }

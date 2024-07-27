@@ -1,13 +1,26 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
-	import { createAuthQuery } from '$lib/user';
+	import { login } from '$lib/api/auth';
+	import { createAuthQuery, invalidateAuthQuery } from '$lib/user';
+	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { Control, Field, FieldErrors, Label } from 'formsnap';
 	import { superForm } from 'sveltekit-superforms';
 	import { zodClient } from 'sveltekit-superforms/adapters';
 	import { z } from 'zod';
 
 	const user = createAuthQuery();
+	const queryClient = useQueryClient();
+	const loginMutation = createMutation({
+		mutationFn: login,
+		onSuccess: (res) => {
+			if (res.status === 'success') {
+				localStorage.setItem('token', res.data.token);
+				invalidateAuthQuery(queryClient);
+				goto('/dashboard');
+			}
+		}
+	});
 
 	$: if (browser && $user.data) {
 		goto('/dashboard');
@@ -28,7 +41,10 @@
 			SPA: true,
 			async onUpdate({ form }) {
 				if (!form.valid) return;
-				await new Promise((resolve) => setTimeout(resolve, 1000));
+				const result = await $loginMutation.mutateAsync(form.data);
+				if (result.status !== 'success') {
+					throw new Error('Failed to login');
+				}
 			}
 		}
 	);

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { initializeClient } from '$lib/api/client';
 	import { onMount } from 'svelte';
 
 	let url: string;
@@ -17,6 +18,7 @@
 				on:submit|preventDefault={() => {
 					try {
 						localStorage.setItem('api', url);
+						initializeClient(url);
 						goto('/login');
 					} catch (e) {
 						console.error(e);
@@ -31,7 +33,7 @@
 						bind:value={url}
 						type="url"
 						placeholder="http://localhost:5000"
-						class="input input-bordered w-full"
+						class="input input-bordered w-full placeholder:text-neutral-400 dark:placeholder:text-neutral-600"
 					/>
 				</label>
 				<div class="card-actions mt-4">

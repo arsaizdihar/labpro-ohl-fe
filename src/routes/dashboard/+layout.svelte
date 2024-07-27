@@ -10,4 +10,6 @@
 	}
 </script>
 
-<slot />
+{#if $user.data}
+	<slot />
+{/if}
