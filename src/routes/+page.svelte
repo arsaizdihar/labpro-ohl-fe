@@ -33,7 +33,7 @@
 						bind:value={url}
 						type="url"
 						placeholder="http://localhost:5000"
-						class="input input-bordered w-full placeholder:text-neutral-400 dark:placeholder:text-neutral-600"
+						class="input input-bordered w-full placeholder:text-neutral-400 dark:placeholder:text-neutral-700"
 					/>
 				</label>
 				<div class="card-actions mt-4">

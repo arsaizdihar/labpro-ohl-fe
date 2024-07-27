@@ -112,13 +112,7 @@
 			</svg>
 		</label>
 	</form>
-	<dialog
-		bind:this={deleteDialog}
-		class="modal"
-		on:close={() => {
-			toDelete = null;
-		}}
-	>
+	<dialog bind:this={deleteDialog} class="modal">
 		<div class="modal-box">
 			<form method="dialog">
 				<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
@@ -133,7 +127,6 @@
 				<button
 					class="btn btn-outline btn-sm"
 					on:click={() => {
-						toDelete = null;
 						deleteDialog.close();
 					}}
 				>
