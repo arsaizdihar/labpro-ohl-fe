@@ -6,8 +6,14 @@
 	let initTheme: string | undefined;
 
 	onMount(() => {
-		themeChange(false);
 		initTheme = localStorage.getItem('theme') ?? undefined;
+
+		if (!initTheme) {
+			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+			initTheme = prefersDark ? 'dark' : 'light';
+			localStorage.setItem('theme', initTheme);
+		}
+		themeChange(false);
 	});
 	const user = createAuthQuery();
 

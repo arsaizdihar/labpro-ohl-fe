@@ -23,12 +23,6 @@ export function initializeClient(endpoint: string) {
 		}
 		return config;
 	});
-
-	_client.interceptors.response.use(async (response) => {
-		// artificially slow down the response
-		await new Promise((resolve) => setTimeout(resolve, 500));
-		return response;
-	});
 }
 
 export function client() {

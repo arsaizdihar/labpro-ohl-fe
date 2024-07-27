@@ -14,6 +14,7 @@
 	let toDelete: SimpleFilm | null = null;
 	let editId: string | null = null;
 	let timeout: number | null = null;
+	let uploadProgress = 0;
 
 	$: films = createQuery({
 		queryKey: ['films', 'list', q],
@@ -46,7 +47,13 @@
 	});
 
 	$: newMutation = createMutation({
-		mutationFn: createFilm,
+		mutationFn: async (data: Parameters<typeof createFilm>[0]) => {
+			uploadProgress = 0;
+			return await createFilm(data, (progress) => {
+				if (!progress.total) return;
+				uploadProgress = Math.round((progress.loaded / progress.total) * 100);
+			});
+		},
 		onSuccess: () => {
 			invalidate();
 			formDialog.close();
@@ -54,7 +61,13 @@
 	});
 
 	$: updateMutation = createMutation({
-		mutationFn: updateFilm,
+		mutationFn: (payload: Parameters<typeof updateFilm>[0]) => {
+			uploadProgress = 0;
+			return updateFilm(payload, (progress) => {
+				if (!progress.total) return;
+				uploadProgress = Math.round((progress.loaded / progress.total) * 100);
+			});
+		},
 		onSuccess: () => {
 			invalidate();
 			formDialog.close();
@@ -119,26 +132,30 @@
 						duration,
 						genre
 					};
-					const result = await $newMutation.mutateAsync(data);
+					await $newMutation.mutateAsync(data);
 				} else {
 					const data = {
 						...form.data,
 						duration,
 						genre
 					};
-					const result = await $updateMutation.mutateAsync({ id: editId, data });
+					await $updateMutation.mutateAsync({ id: editId, data });
 				}
 			}
 		}
 	);
 
+	function toDurationString(duration: number) {
+		const hours = Math.floor(duration / 3600);
+		const minutes = Math.floor((duration % 3600) / 60);
+		const seconds = duration % 60;
+		return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+	}
+
 	const { form: formData, enhance } = form;
 	$: if (editId && $film.data) {
 		const data = $film.data;
-		const hours = Math.floor(data.duration / 3600);
-		const minutes = Math.floor((data.duration % 3600) / 60);
-		const seconds = data.duration % 60;
-		const duration = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+		const duration = toDurationString(data.duration);
 		form.reset({
 			data: {
 				title: data.title,
@@ -155,7 +172,7 @@
 		formDialog.showModal();
 	}
 
-	$: isSubmitting = $newMutation.isPending;
+	$: isSubmitting = $newMutation.isPending || $updateMutation.isPending;
 </script>
 
 <div class="flex-1">
@@ -391,7 +408,8 @@
 					<div class="form-control w-full">
 						<Control let:attrs>
 							<Label class="label">
-								<span class="label-text">Cover Image {editId && '(Leave empty to not change)'}</span
+								<span class="label-text"
+									>Cover Image {editId ? '(Leave empty to not change)' : ''}</span
 								>
 							</Label>
 							<input
@@ -416,7 +434,9 @@
 					<div class="form-control w-full">
 						<Control let:attrs>
 							<Label class="label">
-								<span class="label-text">Film Video {editId && '(Leave empty to not change)'}</span>
+								<span class="label-text"
+									>Film Video {editId ? '(Leave empty to not change)' : ''}</span
+								>
 							</Label>
 							<input
 								type="file"
@@ -436,6 +456,13 @@
 						<FieldErrors class="text-error mt-1 text-sm" />
 					</div>
 				</Field>
+				{#if isSubmitting}
+					<progress
+						class="progress progress-primary w-full my-2"
+						value={uploadProgress}
+						max="100"
+					/>
+				{/if}
 				<button class="btn btn-primary w-full mt-4" disabled={isSubmitting}>Save</button>
 			</form>
 		</div>
@@ -462,35 +489,52 @@
 		{/if}
 		{#if $films.data}
 			{#each $films.data as film}
-				<li class="card card-compact bg-base-300 hover:shadow-xl duration-300">
+				<li
+					class="card card-compact bg-base-300 hover:shadow-2xl duration-300 group hover:scale-105"
+				>
 					<figure class="w-full aspect-[4/3] bg-black">
 						<img src={film.cover_image_url} alt={film.title} class="aspect-[4/3] object-cover" />
 					</figure>
 					<div class="card-body">
 						<h2 class="card-title">{film.title} ({film.release_year})</h2>
+						<p class="text-xs -mt-2 font-light mb-2">
+							{toDurationString(film.duration)}
+						</p>
 						<ul class="flex flex-wrap gap-x-1">
 							{#each film.genre as genre}
 								<li class="badge badge-sm font-medium">{genre}</li>
 							{/each}
 						</ul>
-						<div class="card-actions justify-end">
-							<button
-								class="btn btn-neutral btn-sm w-16"
-								on:click={() => {
-									editId = film.id;
-								}}
-							>
-								Edit
-							</button>
-							<button
-								class="btn btn-error btn-sm w-16"
-								on:click={() => {
-									toDelete = film;
-									deleteDialog.showModal();
-								}}
-							>
-								Delete
-							</button>
+						<p class="-mb-8 opacity-100 group-hover:opacity-0 font-light text-sm italic">
+							Directed by: {film.director}
+						</p>
+						<div
+							class="card-actions justify-between items-end duration-300 opacity-0 group-hover:opacity-100 relative"
+						>
+							<div class="">
+								<p class="badge badge-neutral">
+									🪙 {film.price}
+								</p>
+							</div>
+							<div class="flex space-x-2">
+								<button
+									class="btn btn-neutral btn-sm w-16"
+									on:click={() => {
+										editId = film.id;
+									}}
+								>
+									Edit
+								</button>
+								<button
+									class="btn btn-error btn-sm w-16"
+									on:click={() => {
+										toDelete = film;
+										deleteDialog.showModal();
+									}}
+								>
+									Delete
+								</button>
+							</div>
 						</div>
 					</div>
 				</li>
