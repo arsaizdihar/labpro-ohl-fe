@@ -36,6 +36,12 @@
 						class="input input-bordered w-full placeholder:text-neutral-400 dark:placeholder:text-neutral-700"
 					/>
 				</label>
+				<div class="label">
+					<span class="label-text-alt"
+						>You can use <span class="font-bold select-text">https://demo-labpro.hmif.dev</span> for
+						demo</span
+					>
+				</div>
 				<div class="card-actions mt-4">
 					<button class="btn btn-primary w-full">Save</button>
 				</div>
