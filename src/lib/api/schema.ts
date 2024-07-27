@@ -16,6 +16,7 @@ export const SimpleFilmSchema = z.object({
 	id: z.string(),
 	title: z.string(),
 	release_year: z.number(),
+	director: z.string(),
 	genre: z.array(z.string()),
 	price: z.number(),
 	duration: z.number(),

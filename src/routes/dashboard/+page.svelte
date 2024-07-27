@@ -79,7 +79,7 @@
 </script>
 
 <div class="flex-1">
-	<h1 class="text-xl font-bold mb-4 px-4">Users Management</h1>
+	<h1 class="text-xl font-bold my-4 px-4">Users Management</h1>
 	<form on:submit|preventDefault={onSearchSubmit}>
 		<label class="input input-bordered flex items-center gap-2 input-sm">
 			<input
@@ -149,10 +149,10 @@
 			<button>close</button>
 		</form>
 	</dialog>
-	<div class="overflow-x-auto">
+	<div class="overflow-x-auto my-4">
 		<table class="table table-zebra">
 			<!-- head -->
-			<thead>
+			<thead class="bg-neutral-200 dark:bg-neutral">
 				<tr>
 					<th>ID</th>
 					<th>Username</th>
@@ -222,5 +222,15 @@
 				{/if}
 			</tbody>
 		</table>
+		{#if $users.isLoading}
+			<div class="flex justify-center items-center h-32">
+				<span class="loading loading-dots loading-lg"></span>
+			</div>
+		{/if}
+		{#if $users.isError}
+			<div class="flex justify-center items-center h-32">
+				<div class="text-error">Failed to fetch users</div>
+			</div>
+		{/if}
 	</div>
 </div>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { deleteFilm, getFilms } from '$lib/api/films';
+	import { createFilm, deleteFilm, getFilm, getFilms, updateFilm } from '$lib/api/films';
 	import type { SimpleFilm, User } from '$lib/api/schema';
 	import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { Control, Field, FieldErrors, Label } from 'formsnap';
@@ -16,9 +16,15 @@
 	let timeout: number | null = null;
 
 	$: films = createQuery({
-		queryKey: ['films', q],
+		queryKey: ['films', 'list', q],
 		queryFn: async () => getFilms(q)
 	});
+	$: film = createQuery({
+		queryKey: ['films', 'detail', editId],
+		queryFn: async () => getFilm(editId!),
+		enabled: !!editId
+	});
+
 	const queryClient = useQueryClient();
 
 	function invalidate() {
@@ -39,6 +45,22 @@
 		onError: invalidate
 	});
 
+	$: newMutation = createMutation({
+		mutationFn: createFilm,
+		onSuccess: () => {
+			invalidate();
+			formDialog.close();
+		}
+	});
+
+	$: updateMutation = createMutation({
+		mutationFn: updateFilm,
+		onSuccess: () => {
+			invalidate();
+			formDialog.close();
+		}
+	});
+
 	const onSearchSubmit: EventHandler<SubmitEvent, HTMLFormElement> = (e) => {
 		const input = e.currentTarget.querySelector('input');
 		if (input) {
@@ -49,8 +71,9 @@
 	const schema = z.object({
 		title: z.string().min(1, 'Title is required'),
 		description: z.string(),
+		director: z.string().min(1, 'Director is required'),
 		release_year: z.number({ message: 'Invalid year' }).refine((v) => v > 1000, 'Invalid year'),
-		genre: z.array(z.string()),
+		genre: z.string(),
 		price: z.number({ message: 'Invalid price' }).int().positive('Invalid price'),
 		duration: z.string().regex(/^([0-9]{2}):([0-9]{2}):([0-9]{2})$/, 'Invalid duration'),
 		cover_image: z.any().refine((v) => v === null || v instanceof File, 'Cover image is required'),
@@ -61,8 +84,9 @@
 		{
 			title: '',
 			description: '',
+			director: '',
 			release_year: new Date().getFullYear(),
-			genre: [] as string[],
+			genre: '',
 			price: '' as unknown as number,
 			duration: '',
 			cover_image: null as File | null,
@@ -77,14 +101,61 @@
 					if (!form.data.cover_image || !form.data.video) {
 						form.errors.cover_image = form.data.cover_image ? [] : ['Cover image is required'];
 						form.errors.video = form.data.video ? [] : ['Video is required'];
+						return;
 					}
 				}
 				if (!form.valid) return;
+
+				const duration = form.data.duration
+					.split(':')
+					.reduce((acc, cur) => acc * 60 + parseInt(cur), 0);
+				const genre = form.data.genre.split(',').map((g) => g.trim());
+
+				if (!editId) {
+					const data = {
+						...form.data,
+						cover_image: form.data.cover_image!,
+						video: form.data.video!,
+						duration,
+						genre
+					};
+					const result = await $newMutation.mutateAsync(data);
+				} else {
+					const data = {
+						...form.data,
+						duration,
+						genre
+					};
+					const result = await $updateMutation.mutateAsync({ id: editId, data });
+				}
 			}
 		}
 	);
 
 	const { form: formData, enhance } = form;
+	$: if (editId && $film.data) {
+		const data = $film.data;
+		const hours = Math.floor(data.duration / 3600);
+		const minutes = Math.floor((data.duration % 3600) / 60);
+		const seconds = data.duration % 60;
+		const duration = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+		form.reset({
+			data: {
+				title: data.title,
+				description: data.description,
+				director: data.director,
+				release_year: data.release_year,
+				genre: data.genre.join(','),
+				price: data.price,
+				duration,
+				cover_image: null,
+				video: null
+			}
+		});
+		formDialog.showModal();
+	}
+
+	$: isSubmitting = $newMutation.isPending;
 </script>
 
 <div class="flex-1">
@@ -166,12 +237,30 @@
 			<button>close</button>
 		</form>
 	</dialog>
-	<dialog bind:this={formDialog} class="modal" on:close={() => {}}>
+	<dialog
+		bind:this={formDialog}
+		class="modal"
+		on:close={() => {
+			if (editId) {
+				editId = null;
+				form.reset();
+			}
+		}}
+	>
 		<div class="modal-box">
-			<form method="dialog">
+			<form
+				method="dialog"
+				on:submit={(e) => {
+					if (isSubmitting) {
+						e.preventDefault();
+					}
+				}}
+			>
 				<button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
 			</form>
-			<h3 class="text-lg font-bold">Create Film</h3>
+			<h3 class="text-lg font-bold">
+				{editId ? 'Edit Film' : 'Create Film'}
+			</h3>
 			<form method="post" use:enhance enctype="multipart/form-data">
 				<Field {form} name="title">
 					<div class="form-control w-full">
@@ -184,6 +273,7 @@
 								class="input input-bordered w-full"
 								class:input-error={attrs['data-fs-error'] !== undefined}
 								{...attrs}
+								disabled={isSubmitting}
 								bind:value={$formData.title}
 							/>
 						</Control>
@@ -200,7 +290,26 @@
 								class="textarea textarea-bordered w-full"
 								class:textarea-error={attrs['data-fs-error'] !== undefined}
 								{...attrs}
+								disabled={isSubmitting}
 								bind:value={$formData.description}
+							/>
+						</Control>
+						<FieldErrors class="text-error mt-1 text-sm" />
+					</div>
+				</Field>
+				<Field {form} name="director">
+					<div class="form-control w-full">
+						<Control let:attrs>
+							<Label class="label">
+								<span class="label-text">Director</span>
+							</Label>
+							<input
+								type="text"
+								class="input input-bordered w-full"
+								class:input-error={attrs['data-fs-error'] !== undefined}
+								{...attrs}
+								disabled={isSubmitting}
+								bind:value={$formData.director}
 							/>
 						</Control>
 						<FieldErrors class="text-error mt-1 text-sm" />
@@ -217,7 +326,26 @@
 								class="input input-bordered w-full"
 								class:input-error={attrs['data-fs-error'] !== undefined}
 								{...attrs}
+								disabled={isSubmitting}
 								bind:value={$formData.release_year}
+							/>
+						</Control>
+						<FieldErrors class="text-error mt-1 text-sm" />
+					</div>
+				</Field>
+				<Field {form} name="genre">
+					<div class="form-control w-full">
+						<Control let:attrs>
+							<Label class="label">
+								<span class="label-text">Genre (separated by comma)</span>
+							</Label>
+							<input
+								type="text"
+								class="input input-bordered w-full"
+								class:input-error={attrs['data-fs-error'] !== undefined}
+								{...attrs}
+								disabled={isSubmitting}
+								bind:value={$formData.genre}
 							/>
 						</Control>
 						<FieldErrors class="text-error mt-1 text-sm" />
@@ -234,6 +362,7 @@
 								class="input input-bordered w-full"
 								class:input-error={attrs['data-fs-error'] !== undefined}
 								{...attrs}
+								disabled={isSubmitting}
 								bind:value={$formData.price}
 							/>
 						</Control>
@@ -251,6 +380,7 @@
 								class="input input-bordered w-full"
 								class:input-error={attrs['data-fs-error'] !== undefined}
 								{...attrs}
+								disabled={isSubmitting}
 								bind:value={$formData.duration}
 							/>
 						</Control>
@@ -261,13 +391,15 @@
 					<div class="form-control w-full">
 						<Control let:attrs>
 							<Label class="label">
-								<span class="label-text">Cover Image</span>
+								<span class="label-text">Cover Image {editId && '(Leave empty to not change)'}</span
+								>
 							</Label>
 							<input
 								type="file"
 								class="file-input file-input-bordered w-full"
 								class:file-input-error={attrs['data-fs-error'] !== undefined}
 								{...attrs}
+								disabled={isSubmitting}
 								on:input={(e) => {
 									const file = e.currentTarget.files?.[0];
 									if (file) {
@@ -284,13 +416,14 @@
 					<div class="form-control w-full">
 						<Control let:attrs>
 							<Label class="label">
-								<span class="label-text">Film Video</span>
+								<span class="label-text">Film Video {editId && '(Leave empty to not change)'}</span>
 							</Label>
 							<input
 								type="file"
 								class="file-input file-input-bordered w-full"
 								class:file-input-error={attrs['data-fs-error'] !== undefined}
 								{...attrs}
+								disabled={isSubmitting}
 								on:input={(e) => {
 									const file = e.currentTarget.files?.[0];
 									if (file) {
@@ -303,14 +436,30 @@
 						<FieldErrors class="text-error mt-1 text-sm" />
 					</div>
 				</Field>
-				<button class="btn btn-primary w-full mt-4">Save</button>
+				<button class="btn btn-primary w-full mt-4" disabled={isSubmitting}>Save</button>
 			</form>
 		</div>
-		<form method="dialog" class="modal-backdrop">
+		<form
+			method="dialog"
+			class="modal-backdrop"
+			on:submit={(e) => {
+				if (isSubmitting) {
+					e.preventDefault();
+				}
+			}}
+		>
 			<button>close</button>
 		</form>
 	</dialog>
 	<ul class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 my-8">
+		{#if $films.isLoading}
+			{#each { length: 3 } as _}
+				<li class="skeleton">
+					<div class="w-full aspect-[4/3]"></div>
+					<div class="h-32"></div>
+				</li>
+			{/each}
+		{/if}
 		{#if $films.data}
 			{#each $films.data as film}
 				<li class="card card-compact bg-base-300 hover:shadow-xl duration-300">
@@ -325,7 +474,14 @@
 							{/each}
 						</ul>
 						<div class="card-actions justify-end">
-							<button class="btn btn-neutral btn-sm w-16">Edit</button>
+							<button
+								class="btn btn-neutral btn-sm w-16"
+								on:click={() => {
+									editId = film.id;
+								}}
+							>
+								Edit
+							</button>
 							<button
 								class="btn btn-error btn-sm w-16"
 								on:click={() => {
@@ -342,3 +498,9 @@
 		{/if}
 	</ul>
 </div>
+
+{#if $film.isLoading}
+	<div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+		<span class="loading loading-spinner loading-lg"></span>
+	</div>
+{/if}
