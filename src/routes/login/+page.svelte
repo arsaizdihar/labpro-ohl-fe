@@ -91,6 +91,13 @@
 						<FieldErrors class="text-error mt-1 text-sm" />
 					</div>
 				</Field>
+				<div class="label">
+					<span class="label-text-alt">
+						For demo, you can use username <span class="select-text font-bold">admin</span> and
+						password
+						<span class="select-text font-bold">admin123</span>
+					</span>
+				</div>
 				<div class="card-actions mt-4">
 					<button class="btn btn-primary w-full">Save</button>
 				</div>
